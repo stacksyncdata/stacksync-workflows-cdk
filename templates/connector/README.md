@@ -40,7 +40,7 @@ modules/
     schema.py  content.py  execute.py  config.py  context.md
 ```
 
-Add a module by adding a `modules/<name>/v1/` folder (or `stacksync module create <name>`).
+Add a module by adding a `modules/<name>/v1/` folder (or `stacksync workflow-module create <name>`).
 There is no module list in `stacksync.yml` — modules are discovered from disk.
 
 ## How to build
@@ -55,8 +55,8 @@ There is no module list in `stacksync.yml` — modules are discovered from disk.
 ```bash
 python3 -m venv .venv && source .venv/bin/activate   # run needs an active venv
 
-stacksync connector run          # run locally against your workspace
-stacksync connector deploy       # build and deploy
-stacksync module create <name>   # scaffold a new module
-stacksync module delete <name>   # remove a module
+stacksync workflow-connector run          # run locally against your workspace
+stacksync workflow-connector deploy       # build and deploy
+stacksync workflow-module create <name>   # scaffold a new module
+stacksync workflow-module delete <name>   # remove a module
 ```

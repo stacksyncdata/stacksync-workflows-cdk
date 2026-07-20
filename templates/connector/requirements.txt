@@ -1,7 +1,7 @@
 # The Stacksync CDK (required). Pinned to the v1 major line: you get non-breaking
 # updates automatically and are shielded from breaking major versions.
 #
-# Switch the version with `stacksync connector cdk <ref>`, or edit @v1 below:
+# Switch the version with `stacksync workflow-connector cdk <ref>`, or edit @v1 below:
 #   @v1        latest v1.x  (recommended)
 #   @v1.0.0    an exact release, fully reproducible  (like pandas==1.0.0)
 #   @v2        the next major, when you're ready to migrate

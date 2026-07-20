@@ -37,7 +37,7 @@ Modules are **discovered from disk** — there is no module list anywhere. Addin
 The connector's configuration — **app-level settings only**, in two blocks:
 
 - **`deployment_settings`** — where it deploys:
-  - `workspace` — your Stacksync workspace id (filled in by `stacksync connector create`)
+  - `workspace` — your Stacksync workspace id (filled in by `stacksync workflow-connector create`)
   - `region` — `usnv` or `besg`
 - **`app_settings`** — how the app appears in the workflow builder:
   - `app_type` — the stable machine id: lowercase letters, numbers, underscores (e.g.
@@ -142,7 +142,7 @@ needs none. Make calls directly in the handler with whatever library fits
 ## Commands
 
 ```bash
-stacksync connector run          # run locally against your workspace
-stacksync connector deploy       # build and deploy
-stacksync module create <name>   # scaffold a new module
+stacksync workflow-connector run          # run locally against your workspace
+stacksync workflow-connector deploy       # build and deploy
+stacksync workflow-module create <name>   # scaffold a new module
 ```
