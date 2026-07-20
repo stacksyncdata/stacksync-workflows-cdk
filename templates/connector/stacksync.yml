@@ -1,0 +1,15 @@
+# stacksync.yml — the connector's configuration.
+#
+# App-level settings only. Modules are discovered automatically from the
+# modules/ folder (modules/<name>/v<N>/), so there is no module list here.
+
+deployment_settings:
+  workspace: "YOUR_WORKSPACE_ID_HERE" # set by `stacksync connector create`
+  region: "usnv" # "usnv" or "besg"
+
+app_settings:
+  app_type: "my_app" # stable id: lowercase letters, numbers, underscores only (e.g. my_crm)
+  app_name: "My App" # human-readable name shown in the workflow builder
+  app_type_display: "My App"
+  app_icon_svg_url: "" # URL to your app's icon (SVG), shown in the workflow builder
+  app_description: "A concise description of your app and its capabilities."

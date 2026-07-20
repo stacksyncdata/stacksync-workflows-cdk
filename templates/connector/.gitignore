@@ -1,0 +1,5 @@
+.stacksync_build/
+.venv/
+__pycache__/
+.stacksync_deployment/
+.logs/

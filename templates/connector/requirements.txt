@@ -1,0 +1,12 @@
+# The Stacksync CDK (required). Pinned to the v1 major line: you get non-breaking
+# updates automatically and are shielded from breaking major versions.
+#
+# Switch the version with `stacksync connector cdk <ref>`, or edit @v1 below:
+#   @v1        latest v1.x  (recommended)
+#   @v1.0.0    an exact release, fully reproducible  (like pandas==1.0.0)
+#   @v2        the next major, when you're ready to migrate
+#   @prod      bleeding edge (latest of everything)
+git+https://github.com/stacksyncdata/stacksync-workflows-cdk.git@v1#subdirectory=lib
+
+# Add your connector's dependencies below — e.g. an HTTP client:
+# requests>=2.31.0
