@@ -4,14 +4,14 @@
 def content(request: Request) -> ContentResponse: ...
 ```
 
-Populates the **dynamic dropdown options** for fields that declare
+Populates the dynamic dropdown options for fields that declare
 `content.content_objects` in the schema (the `select_object` selector, plus any
 foreign-key / enum dropdowns your object fields use).
 
 ## What you receive
 
 - `request.content_object_names` — the ids to populate this call (each is a schema
-  field's `content.content_objects[].id`). Build **only** what's asked for.
+  field's `content.content_objects[].id`). Build only what's asked for.
 - `request.form_data` — the current field values (for dependent dropdowns).
 - `request.credentials` — the connection (may be empty).
 
@@ -37,12 +37,12 @@ def content(request):
 
 ## Two kinds of options
 
-Real connectors keep a small **registry** mapping each content-object id to how its
+Real connectors keep a small registry mapping each content-object id to how its
 options are produced:
 
-- **Static list** (an "enum") — a fixed `[{"value","label"}]` you define. Fastest;
+- Static list (an "enum") — a fixed `[{"value","label"}]` you define. Fastest;
   no API call. Example: a `choices_currency` dropdown, or the `objects` selector.
-- **Fetched** (a "foreign key") — call your API, then map each record to an option.
+- Fetched (a "foreign key") — call your API, then map each record to an option.
   When mapping, pick the value and label defensively:
 
 ```python
@@ -60,8 +60,8 @@ def fetch_options(name, credentials):
 
 ## The `objects` selector
 
-The `objects` dropdown (the `select_object` options) is usually a **fixed list of the
-object types your connector supports** — but it can be fetched too (a database
+The `objects` dropdown (the `select_object` options) is usually a fixed list of the
+object types your connector supports — but it can be fetched too (a database
 connector lists its tables). Filter by the operation this module supports:
 
 ```python
@@ -96,8 +96,10 @@ Most dropdowns are modest — fetch one generous page and don't paginate unless 
 
 ## Rules
 
-- **Never raise.** `content` must not crash the form. On no credentials or an upstream
-  error, return **empty options** for that name: `if not request.credentials: return ContentResponse()`.
+- Never raise. `content` must not crash the form. On no credentials or an upstream
+  error, return empty options for that name: `if not request.credentials: return ContentResponse()`.
 - Set timeouts, handle upstream failures per-name, never log secrets.
 - `value` is stored and reaches `execute` in `request.data` — keep it stable (an id),
   not a display string.
+
+Next: [execute.md](execute.md) for the action that runs.

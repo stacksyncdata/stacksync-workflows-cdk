@@ -31,8 +31,8 @@ if not records:
 
 ## Coerce the string-typed values back
 
-The schema sends numbers, dates, booleans, and multi-selects as **strings** (so Jinja
-works), so `execute` must convert each record to your API's real types **before** the
+The schema sends numbers, dates, booleans, and multi-selects as strings (so Jinja
+works), so `execute` must convert each record to your API's real types before the
 call. Leave `{{ … }}` templates untouched (they're already resolved by the engine, but
 a literal template that slipped through must not crash a cast):
 
@@ -61,14 +61,14 @@ Also pack any dynamic custom fields (e.g. `custom_field_{id}` → `{"id": int(id
 
 Create the records. Two shapes are common:
 
-- **Per-record, concurrent** — a thread pool (cap ~5) submitting one call per record,
+- Per-record, concurrent — a thread pool (cap ~5) submitting one call per record,
   results collected in input order. Works for any API.
-- **Bulk** — when there's a create-many endpoint and you have >1 record, send them in
+- Bulk — when there's a create-many endpoint and you have >1 record, send them in
   one call.
 
 Aggregate into a result: `{"total", "successful", "failed", "results": [...]}`, where
 each result row is `{"index", "status": "success"|"failed", ...}` (failed rows carry an
-`error` message). A per-record failure should **not** abort the batch — record it and
+`error` message). A per-record failure should not abort the batch — record it and
 continue.
 
 ## Return
@@ -87,7 +87,7 @@ data, or via a `ManagedError` whose `data` carries the result.
   `.unauthorized(...)`. The message reaches the user cleanly.
 - Anything else becomes a 500 automatically — don't wrap the whole body in try/except
   just to swallow it.
-- **Don't retry mutating calls on a 500** — a create may have succeeded server-side, and
+- Don't retry mutating calls on a 500 — a create may have succeeded server-side, and
   a retry would duplicate it.
 
 ## Output chaining
