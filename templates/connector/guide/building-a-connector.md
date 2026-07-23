@@ -37,6 +37,34 @@ The connector's configuration — app-level settings only, in two blocks:
 
 That's the whole file — no modules are listed here.
 
+## Module settings: `config.py`
+
+Each module version ships a `config.py` exporting a `ModuleConfig`. Every field
+has a sensible default — set only what differs:
+
+```python
+from stacksync_cdk import ModuleConfig
+
+CONFIG = ModuleConfig(
+    module_name="Create Records",
+    module_description="Create one or more records of any object type.",
+)
+```
+
+| Field | Default | What it does |
+|---|---|---|
+| `module_name` | folder name, titled | display name in the workflow builder |
+| `module_description` | `""` | one-line description |
+| `module_category` | `"action"` | module category |
+| `requires_credentials_for_schema` | `False` | set True when `schema()` needs credentials (fields fetched from your API) |
+| `on_content_update` | `True` | the engine re-fetches the schema with the node's form values at execution — required for dynamic schemas; their Jinja replacement depends on it |
+| `on_content_initialized` | `True` | load dynamic content when the form first renders |
+| `on_create` / `on_update` / `on_delete` | `False` | platform lifecycle hooks; leave off unless enabled for your app |
+
+Leave `on_content_update` at `True` unless the module's schema is fully static:
+disabling it on a dynamic module breaks variable replacement in the dynamically
+added fields.
+
 ## Versioning
 
 Each module folder holds one or more version directories (`v1`, `v2`, …). The version
@@ -103,18 +131,58 @@ endpoint; `Request` exposes the parts you need so you never dig through nested d
     "rate_limiter": { ... } },
   "connection_management_type": "managed" }
 ```
-`request.credentials` unwraps it. Read it typed by auth style:
 
-| Auth style | How to read it |
-|---|---|
-| API key | `request.credentials.api_key` |
-| OAuth2 | `request.credentials.access_token` (already refreshed), `.token_type`, `.expires_at` |
-| Database | `request.credentials.connection_string` |
-| Anything else | `request.credentials.get("field")` — read any key by name (e.g. an instance URL); `request.credentials.value` is the raw dict |
-| Metadata | `request.credentials.connection_app_type`, `.connection_id`, `.rate_limiter` |
+`request.credentials` unwraps it. The important part is `value`: it is a **flat
+dict**, one level under `connection_data` — no deeper nesting, read your keys
+straight off it. **Which keys are in `value` is defined by the connection type you
+declared in `app_types` — not by your app.** Read that type's exact key names:
+
+| Connection type | What `value` looks like | How to read it |
+|---|---|---|
+| `generic_api_credentials` (ships with the template) | **one** key only: `{"api_credentials": "..."}` — a single string (a key, a token, a connection string, or a JSON blob you `json.loads` yourself) | `request.credentials.get("api_credentials")` |
+| A dedicated type | that type's exact form fields, e.g. `{"api_key": "...", "instance_url": "..."}` | `request.credentials.get("api_key")`, `.get("instance_url")`, … |
+| OAuth2 | `{"access_token": "...", "expiration_time": "...", "token_type": "Bearer"}` (refresh token stripped) | `request.credentials.access_token` (already refreshed), `.token_type`, `.expires_at` |
+| Database | `{"connection_string": "..."}` | `request.credentials.connection_string` |
+| Metadata (on the envelope, not in `value`) | — | `request.credentials.connection_app_type`, `.connection_id`, `.rate_limiter` |
+
+`request.credentials.api_key` is a convenience that reads `api_key` / `api_key_bearer`
+off `value`; if your connection type stores the key under a different name, use
+`.get("that_name")`.
 
 Use `if request.credentials:` to check whether a connection is present (it's empty on
 `/schema` and `/content` until the user selects one).
+
+> **The #1 credentials mistake:** the template ships `generic_api_credentials`,
+> which delivers a *single* `api_credentials` string. If your code reads named
+> fields (`url`, `host`, `account_id`, …), they will always be missing. Either read
+> everything out of that one `api_credentials` string, or ask Stacksync for a
+> dedicated connection type that has the fields your app needs — then read its exact
+> field names.
+
+### When the shape isn't what you expect
+
+A missing key is a **connection-type problem, not a nesting one**: if a key you
+read is `None`, either the module declared the wrong `app_types` or it read a name
+that type does not use. Never silently flatten or guess your way into the value —
+that hides the real cause.
+
+Instead, guard the keys you need and raise a `ManagedError` whose message shows an
+**example of the expected shape with fake values** plus a one-line explanation. The
+example is what makes the error in the Stacksync UI actionable — the user sees the
+exact JSON to fill in, not just that something is missing:
+
+```python
+if not request.credentials.get("api_credentials"):
+    raise ManagedError.validation_error(
+        "This connection is missing its API credentials. Create a "
+        "generic_api_credentials connection whose value looks like this:\n"
+        '{"api_credentials": "your-api-key-here"}'
+    )
+```
+
+Show the shape, never the real secret. Keep the example keys identical to the ones
+your code reads (and to the connection type's real field names), so filling it in
+fixes the error.
 
 ## Credentials
 
@@ -129,27 +197,26 @@ Declare what the module needs with the top-level `connections` block in
 }
 ```
 
-`app_types` names the connection type your module accepts.
+`app_types` names the connection type your module accepts. There are two kinds —
+this is the basic rule for credentials:
 
-### Getting your connection type
+**1. The generic type — `generic_api_credentials` (ships with the template).**
+Self-service: the user creates the connection and puts whatever your app needs
+into a single `api_credentials` field — an API key, a URL, a connection string,
+or a JSON blob. You decide what that string holds and read it with
+`request.credentials.get("api_credentials")` (parse it yourself if it's JSON).
+Use this to build and ship without waiting on anything.
 
-Every app on Stacksync has its own connection type — `rillet`, `postgres`,
-`zendesk`, and so on. It defines what the user fills in when they connect, and
-whether the login is an API key, a connection string, or an OAuth flow.
+**2. A dedicated Stacksync type — a specific `app_type` (e.g. `rillet`,
+`postgres`, `zendesk`).** Stacksync provisions these: each defines its own named
+fields and login style (API key, connection string, OAuth). They are registered
+on the platform, not in your project. If the connection type you need for the app
+you're developing isn't available yet, **reach out to Stacksync support** with the
+app and how it authenticates, and we'll set it up and send you the `app_type` to
+put in `app_types`. Then read its exact field names at runtime.
 
-Connection types are registered on the platform, so they are not defined in your
-project. Stacksync provides the connection type for your app when you start
-building: contact us with the app you are connecting to and how it
-authenticates, and we will set it up and send you the type to use. Put that
-value in `app_types`.
-
-Self-service connection creation is on the way; until then this step is done for
-you.
-
-The template ships with `generic_api_credentials`, a general-purpose type that
-accepts any non-expiring secret — an API key, a token, a connection string, or a
-JSON credentials file. It is useful for getting started before your own type is
-ready.
+Start on the generic type; move to a dedicated type when you want named fields,
+OAuth, or a branded connection experience for your users.
 
 ### Reading credentials at runtime
 

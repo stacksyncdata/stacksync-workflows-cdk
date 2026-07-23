@@ -12,15 +12,50 @@ The platform delivers credentials wrapped in a fixed envelope::
       "connection_management_type": "managed"
     }
 
-``value`` holds whatever the credential type entered — an API key, a
-ready-to-use OAuth access token, or a database connection string. This class
-unwraps the envelope once and exposes typed accessors per auth style, plus a
-raw escape hatch. It reads from both delivery locations so handlers never have
-to branch on whether the connection was declared as a top-level ``connections``
-block or as an inline ``type: "connection"`` field.
+``value`` is a **flat dict**, one level under ``connection_data``. There is no
+deeper nesting to dig through; read your keys straight off it. **Which keys are
+in it is defined entirely by the connection type your module declares in
+``app_types`` — not by your app.** Read the exact key names that connection type
+stores. The common shapes:
 
-The connector never refreshes OAuth tokens — the platform delivers a fresh
-``access_token`` and strips the refresh token before it ever reaches here.
+* ``generic_api_credentials`` — has exactly ONE field, ``api_credentials``, a
+  free-form string (an API key, a token, a connection string, or a pasted JSON
+  blob). It does NOT give you named fields::
+
+      {"api_credentials": "sk-...."}          # a key/token
+      {"api_credentials": "{\"url\": ...}"}   # or a JSON string YOU must json.loads
+
+  So ``.get("url")`` is ``None`` here — the only key is ``api_credentials``. If
+  you need structured multi-field credentials (an instance URL + database +
+  user + key, say), do NOT use ``generic_api_credentials``: use a dedicated
+  connection type (below).
+
+* A **dedicated type** (one Stacksync sets up for your app) — ``value`` is the
+  exact fields that type's form collects, so read those exact names. Field names
+  are whatever that type defines (they vary per app), e.g.::
+
+      {"api_key": "k-123", "instance_url": "https://acme.example.com"}
+
+* **OAuth2** — a ready-to-use, already-refreshed token; the refresh token is
+  stripped before it reaches here. Read via ``.access_token`` / ``.token_type``
+  / ``.expires_at``::
+
+      {"access_token": "at-...", "expiration_time": "2026-07-23T10:00:00",
+       "token_type": "Bearer"}
+
+* **Database** — ``{"connection_string": "postgres://..."}``; read via
+  ``.connection_string``.
+
+A missing key is therefore a *connection-type* problem, not a nesting one: if
+``.get("url")`` is ``None``, either the module declared the wrong ``app_types``
+or it read a key name that type does not use. Do NOT silently flatten or guess —
+raise a ``ManagedError`` whose message shows an EXAMPLE of the expected shape
+(fake values) so the user can see what to fill in. See the connector guide's
+Credentials section.
+
+This class reads from both delivery locations so handlers never have to branch
+on whether the connection was declared as a top-level ``connections`` block or
+as an inline ``type: "connection"`` field.
 """
 
 from __future__ import annotations

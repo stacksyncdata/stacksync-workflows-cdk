@@ -17,7 +17,9 @@ def execute(request: Request) -> ExecuteResponse:
     if not records:
         raise ManagedError.validation_error(f"At least one {selected_object} is required.")
 
-    # TODO: create each record via your API (use request.credentials.api_key) and
+    # TODO: create each record via your API (read auth off request.credentials —
+    #       see ../../../guide/building-a-connector.md for the credential shape and
+    #       how to error with an example when a required field is missing) and
     #       collect what it returns. Batch the calls when your API supports it.
     created: list[dict] = []
 
