@@ -256,6 +256,18 @@ def _app_config_route(root: str, modules: list[_DiscoveredModule]) -> Any:
                 "requires_credentials_for_schema": config["requires_credentials_for_schema"],
                 "module_icon_svg_url": config["module_icon_svg_url"],
                 "module_path": f"{module.module_type}/v{module.version}",
+                # Mirrors the native module registry's module_actions_schema.
+                # on_content_update drives the engine's execution-time schema
+                # re-fetch (with form values), which dynamic schemas and Jinja
+                # replacement depend on. All hooks are set per module in its
+                # config.py (ModuleConfig).
+                "module_actions_schema": {
+                    "on_create": config["on_create"],
+                    "on_delete": config["on_delete"],
+                    "on_update": config["on_update"],
+                    "on_content_update": config["on_content_update"],
+                    "on_content_initialized": config["on_content_initialized"],
+                },
             }
         )
 
