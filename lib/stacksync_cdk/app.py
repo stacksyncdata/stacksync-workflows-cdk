@@ -65,6 +65,25 @@ def _load_stacksync_yml(root: str) -> dict[str, Any]:
         return yaml.safe_load(f) or {}
 
 
+def _load_context(directory: str) -> str | None:
+    """The raw text of ``<directory>/context.md``, or ``None`` when it is absent
+    or unreadable.
+
+    Callers return HTTP 404 for ``None`` so a missing ``context.md`` is a proper
+    not-found rather than a silent empty string. Context is static markdown served
+    as-is, read per request (not cached) so edits appear on the next fetch; the
+    filename is fixed, so no request input ever reaches the path.
+    """
+    path = os.path.join(directory, "context.md")
+    if not os.path.isfile(path):
+        return None
+    try:
+        with open(path, encoding="utf-8") as f:
+            return f.read()
+    except OSError:
+        return None
+
+
 def _import_from_path(module_name: str, file_path: str) -> ModuleType:
     spec = importlib.util.spec_from_file_location(module_name, file_path)
     if spec is None or spec.loader is None:
@@ -213,6 +232,23 @@ def _register_module(app: Flask, module: _DiscoveredModule) -> None:
         )
         registered.append(kind)
 
+    # Static per-module context, versioned by living in this vN/ directory.
+    version_dir = module.version_dir
+    label = f"{module.module_type}/v{module.version}"
+
+    def serve_context() -> Any:
+        content = _load_context(version_dir)
+        if content is None:
+            return Response.error(ManagedError.not_found("context.md", label))
+        return Response.success({"module_context": content})
+
+    app.add_url_rule(
+        f"{prefix}/context",
+        endpoint=f"{unique}_context",
+        view_func=serve_context,
+        methods=["GET"],
+    )
+
     if registered:
         app.logger.info(
             "Registered %s v%s: %s", module.module_type, module.version, ", ".join(registered)
@@ -306,6 +342,14 @@ def create_app(root: str | None = None) -> Flask:
     @app.get("/app-config")
     def app_config() -> Any:
         return _app_config_route(root, modules)
+
+    # App-level context: the connector-root context.md, shared across modules.
+    @app.get("/context")
+    def app_context() -> Any:
+        content = _load_context(root)
+        if content is None:
+            return Response.error(ManagedError.not_found("context.md", "connector (app-level)"))
+        return Response.success({"connector_context": content})
 
     app.logger.info("Connector ready (%d module version(s))", len(modules))
     return app

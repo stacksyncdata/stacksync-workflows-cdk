@@ -14,7 +14,7 @@ handler functions — that's the whole surface:
 | `content.py` | `content(request: Request) -> ContentResponse` | dynamic dropdown options | [content.md](content.md) |
 | `execute.py` | `execute(request: Request) -> ExecuteResponse` | the runtime action | [execute.md](execute.md) |
 | `config.py`  | `CONFIG = ModuleConfig(...)` | module name / description / flags | — |
-| `context.md` | — | what the module does (for humans + AI) | — |
+| `context.md` | — | the module's skill file — what the platform's AI needs to use it | [context.md](context.md) |
 
 The function name matches the file name (`schema.py` → `def schema`).
 
