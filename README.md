@@ -17,7 +17,7 @@ lib/                  The importable package (installed into the connector).
     module_config.py    ModuleConfig — per-module capability flags
     validation.py       JSON-string input coercion helpers
 templates/            The scaffold the CLI copies for `stacksync workflow-connector create`.
-  connector/            stacksync.yml, main.py, modules/, guide/, Dockerfile.
+  connector/            stacksync.yml, main.py, modules/, guide/.
 ```
 
 ## How the pieces are used

@@ -1,8 +1,8 @@
 """Entry point for the connector.
 
 The CDK's app factory discovers the modules under ``modules/`` and wires up the
-routes. Serve this with ``gunicorn main:app`` (see ``gunicorn_config.py``); the
-Stacksync CLI boots the same ``app`` for local runs.
+routes. The Stacksync CLI boots ``app`` for local runs, and Stacksync serves the
+same ``app`` once the connector is deployed.
 """
 
 import os
