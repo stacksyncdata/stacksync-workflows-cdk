@@ -3,3 +3,6 @@
 __pycache__/
 .stacksync_deployment/
 .logs/
+.env
+.env.*
+!.env.example
