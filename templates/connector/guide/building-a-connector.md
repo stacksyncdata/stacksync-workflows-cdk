@@ -135,7 +135,7 @@ endpoint; `Request` exposes the parts you need so you never dig through nested d
 `request.credentials` unwraps it. The important part is `value`: it is a **flat
 dict**, one level under `connection_data` — no deeper nesting, read your keys
 straight off it. **Which keys are in `value` is defined by the connection type you
-declared in `app_types` — not by your app.** Read that type's exact key names:
+declared in `connection_app_type` — not by your app.** Read that type's exact key names:
 
 | Connection type | What `value` looks like | How to read it |
 |---|---|---|
@@ -162,7 +162,7 @@ Use `if request.credentials:` to check whether a connection is present (it's emp
 ### When the shape isn't what you expect
 
 A missing key is a **connection-type problem, not a nesting one**: if a key you
-read is `None`, either the module declared the wrong `app_types` or it read a name
+read is `None`, either `connection_app_type` is not the type you think or the code reads a name
 that type does not use. Never silently flatten or guess your way into the value —
 that hides the real cause.
 
@@ -186,19 +186,17 @@ fixes the error.
 
 ## Credentials
 
-Declare what the module needs with the top-level `connections` block in
-`schema.py`:
+Declare the connection once, in `stacksync.yml`:
 
-```python
-"connections": {
-    "required": True,
-    "app_types": ["generic_api_credentials"],
-    "allowed_connection_management_types": ["managed"],
-}
+```yaml
+app_settings:
+  connection_app_type: "generic_api_credentials"
 ```
 
-`app_types` names the connection type your module accepts. There are two kinds —
-this is the basic rule for credentials:
+The CDK adds the connection picker to every module's form from it, and Stacksync
+registers the same connection type when the connector is deployed. Do not add a
+`connections` block to `schema.py`. Deployment is refused without
+`connection_app_type`. There are two kinds — this is the basic rule for credentials:
 
 **1. The generic type — `generic_api_credentials` (ships with the template).**
 Self-service: the user creates the connection and puts whatever your app needs
@@ -207,13 +205,16 @@ or a JSON blob. You decide what that string holds and read it with
 `request.credentials.get("api_credentials")` (parse it yourself if it's JSON).
 Use this to build and ship without waiting on anything.
 
-**2. A dedicated Stacksync type — a specific `app_type` (e.g. `rillet`,
-`postgres`, `zendesk`).** Stacksync provisions these: each defines its own named
-fields and login style (API key, connection string, OAuth). They are registered
-on the platform, not in your project. If the connection type you need for the app
-you're developing isn't available yet, **reach out to Stacksync support** with the
-app and how it authenticates, and we'll set it up and send you the `app_type` to
-put in `app_types`. Then read its exact field names at runtime.
+**2. A dedicated Stacksync type — your app's own `app_type`.** Stacksync
+provisions these: each defines its own named fields and login style (API key,
+connection string, OAuth). They are registered on the platform, not in your
+project. If your app needs one, **reach out to Stacksync support** with the app and
+how it authenticates; once it is set up, set `connection_app_type` to your
+`app_type` and read the type's exact field names at runtime. A connector cannot use
+another app's connection type.
+
+Whichever you use, write it in the `## Connection` section of every `context.md`:
+the connection type and the exact keys your code reads from it.
 
 Start on the generic type; move to a dedicated type when you want named fields,
 OAuth, or a branded connection experience for your users.

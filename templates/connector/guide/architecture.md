@@ -93,17 +93,13 @@ What the user sees:
 
 ### 1. The base schema
 
-`schema.py` holds a static base: the connection requirement and the object
-selector. This is what renders before anything is chosen.
+`schema.py` holds a static base: the object selector. This is what renders
+before anything is chosen. The connection picker is added by the CDK from
+`connection_app_type` in `stacksync.yml`, so it is not part of the schema.
 
 ```python
 BASE_SCHEMA = {
     "metadata": {"workflows_module_schema_version": "1.0.0"},
-    "connections": {
-        "required": True,
-        "app_types": ["generic_api_credentials"],
-        "allowed_connection_management_types": ["managed"],
-    },
     "fields": [
         {
             "id": "select_object",
@@ -122,14 +118,17 @@ Three parts do the work:
 
 | Key | Effect |
 |---|---|
-| `connections.required` | the step cannot run until a connection is chosen |
+| `connection_app_type` (stacksync.yml) | the CDK adds the connection picker; the step cannot run until a connection is chosen |
 | `content.content_objects` | the dropdown's options come from `/content`, under the id `objects` |
 | `on_action.load_schema` | changing the selection re-runs `/schema` |
 
 ### 2. Filling the dropdown
 
-`content.py` answers with the list of objects your connector supports. A static
-list is fine; fetch it live when the system's objects vary per account.
+`content.py` answers with **every** object the API can create, read or change:
+all standard objects and the account's custom objects. When the API has a
+metadata endpoint (a list of objects or custom objects), fetch the list live from
+it, so custom objects appear without new code. Use a static list only when the API
+has no such endpoint and no custom objects, and then list every standard object.
 
 ```python
 def content(request: Request) -> ContentResponse:

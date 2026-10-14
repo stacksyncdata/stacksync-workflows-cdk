@@ -187,17 +187,33 @@ def _execute_wire(result: Any) -> dict[str, Any]:
     return {"data": result}
 
 
-# Each kind wraps its handler's return into the endpoint's response envelope.
-_WRAPPERS: dict[str, Callable[[Any], Any]] = {
-    "schema": lambda result: Response.success({"schema": _schema_dict(result)}),
-    "content": lambda result: Response.success(_content_wire(result)),
-    "execute": lambda result: jsonify(_execute_wire(result)),
-}
+def _connections_block(connection_app_type: str) -> dict[str, Any] | None:
+    """The form's connection picker for the connection type declared in stacksync.yml."""
+    if not connection_app_type:
+        return None
+    return {
+        "required": True,
+        "app_types": [connection_app_type],
+        "allowed_connection_management_types": ["managed"],
+    }
 
 
-def _make_view(handler: Callable[..., Any], kind: str) -> Callable[[], Any]:
+def _make_schema_wrapper(connections: dict[str, Any] | None) -> Callable[[Any], Any]:
+    """Wrap a schema handler's return, adding the declared connection picker when the handler set none."""
+
+    def wrap(result: Any) -> Any:
+        schema = dict(_schema_dict(result))
+        if connections is not None:
+            schema.setdefault("connections", connections)
+        return Response.success({"schema": schema})
+
+    return wrap
+
+
+def _make_view(
+    handler: Callable[..., Any], kind: str, wrap: Callable[[Any], Any]
+) -> Callable[[], Any]:
     """Build the Flask view for one handler: parse, run, wrap, and map errors."""
-    wrap = _WRAPPERS[kind]
 
     def view() -> Any:
         try:
@@ -211,7 +227,9 @@ def _make_view(handler: Callable[..., Any], kind: str) -> Callable[[], Any]:
     return view
 
 
-def _register_module(app: Flask, module: _DiscoveredModule) -> None:
+def _register_module(
+    app: Flask, module: _DiscoveredModule, connections: dict[str, Any] | None
+) -> None:
     prefix = f"/{module.module_type}/v{module.version}"
     unique = f"{module.module_type}_v{module.version}"
 
@@ -219,6 +237,12 @@ def _register_module(app: Flask, module: _DiscoveredModule) -> None:
     if module.version_dir not in sys.path:
         sys.path.insert(0, module.version_dir)
 
+    # Each kind wraps its handler's return into the endpoint's response envelope.
+    wrappers: dict[str, Callable[[Any], Any]] = {
+        "schema": _make_schema_wrapper(connections),
+        "content": lambda result: Response.success(_content_wire(result)),
+        "execute": lambda result: jsonify(_execute_wire(result)),
+    }
     registered: list[str] = []
     for kind in _HANDLER_KINDS:
         handler = _load_handler(module.version_dir, kind, unique)
@@ -227,7 +251,7 @@ def _register_module(app: Flask, module: _DiscoveredModule) -> None:
         app.add_url_rule(
             f"{prefix}/{kind}",
             endpoint=f"{unique}_{kind}",
-            view_func=_make_view(handler, kind),
+            view_func=_make_view(handler, kind, wrappers[kind]),
             methods=["POST"],
         )
         registered.append(kind)
@@ -261,9 +285,8 @@ def _register_module(app: Flask, module: _DiscoveredModule) -> None:
         )
 
 
-def _app_config_route(root: str, modules: list[_DiscoveredModule]) -> Any:
+def _app_config_route(root: str, app_type: str, modules: list[_DiscoveredModule]) -> Any:
     settings = _load_stacksync_yml(root).get("app_settings") or {}
-    app_type = settings.get("app_type", "unknown_app")
 
     app_settings: dict[str, Any] = {
         "app_name": settings.get("app_name", "Unnamed App"),
@@ -271,6 +294,7 @@ def _app_config_route(root: str, modules: list[_DiscoveredModule]) -> Any:
         "app_type_display": settings.get("app_type_display", settings.get("app_type")),
         "app_icon_svg_url": settings.get("app_icon_svg_url", ""),
         "app_description": settings.get("app_description", ""),
+        "connection_app_type": settings.get("connection_app_type", ""),
         "options": settings.get("options") or {},
     }
 
@@ -326,14 +350,29 @@ def create_app(root: str | None = None) -> Flask:
     app = Flask(__name__)
     app.json.sort_keys = False  # preserve field/key order in every envelope
 
-    app_type = (_load_stacksync_yml(root).get("app_settings") or {}).get("app_type", "unknown_app")
+    app_settings = _load_stacksync_yml(root).get("app_settings") or {}
+    # Every module id and the connector's registration are built from app_type, so there is no default.
+    app_type = str(app_settings.get("app_type") or "").strip()
+    if not app_type:
+        raise ValueError(
+            f"{os.path.join(root, 'stacksync.yml')}: app_settings.app_type is required"
+        )
     app.logger.info("Initializing connector (root=%s, app_type=%r)", root, app_type)
 
+    # Imported here, not at the top: `python -m stacksync_cdk.connector_checks` must be able to load that
+    # module fresh, after the package itself is imported.
+    from stacksync_cdk.connector_checks import find_connector_problems
+
+    # Warnings only: a connector that already runs keeps running. Deployment rejects these problems.
+    for problem in find_connector_problems(root):
+        app.logger.warning("Must fix before deploying: %s", problem)
+
+    connections = _connections_block(str(app_settings.get("connection_app_type") or "").strip())
     modules = _discover_modules(modules_dir)
     if not modules:
         app.logger.warning("No modules discovered under %s", modules_dir)
     for module in modules:
-        _register_module(app, module)
+        _register_module(app, module, connections)
 
     @app.get("/health")
     def health() -> Any:
@@ -341,7 +380,7 @@ def create_app(root: str | None = None) -> Flask:
 
     @app.get("/app-config")
     def app_config() -> Any:
-        return _app_config_route(root, modules)
+        return _app_config_route(root, app_type, modules)
 
     # App-level context: the connector-root context.md, shared across modules.
     @app.get("/context")

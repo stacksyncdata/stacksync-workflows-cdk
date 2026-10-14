@@ -31,8 +31,6 @@ workflow can create several records at once:
 ```python
 BASE_SCHEMA = {
     "metadata": {"workflows_module_schema_version": "1.0.0"},
-    "connections": {"required": True, "app_types": ["generic_api_credentials"],
-                    "allowed_connection_management_types": ["managed"]},
     "fields": [{
         "id": "select_object", "type": "string", "label": "Select object",
         "validation": {"required": True},
@@ -214,20 +212,22 @@ Cascading dropdowns (pick a schema → reload the tables list):
 
 A field can carry both `load_content` and `load_schema`.
 
-## The connections block
+## The connection picker
+
+Do not put a `connections` block in your schema. Declare the connection once, as
+`connection_app_type` in `stacksync.yml`; the CDK adds the picker to every
+module's form, and Stacksync registers the same type for the deployed connector:
 
 ```python
 "connections": {
     "required": True,
-    "app_types": ["generic_api_credentials"],     # the connection type(s) accepted
+    "app_types": ["<connection_app_type from stacksync.yml>"],
     "allowed_connection_management_types": ["managed"],
 }
 ```
-`app_types` is the connection type the module accepts — not a placeholder.
-`generic_api_credentials` is a real, platform-registered connection (a box where the
-user pastes an API key) — the sensible default for a custom connector that doesn't
-have its own type. A connector with a dedicated connection type uses that instead,
-exactly like the built-ins do: `["salesforce"]`, `["zendesk"]`, `["postgres"]`.
+`connection_app_type` is either `generic_api_credentials` (a box where the user
+pastes an API key) or your app's own `app_type`, once Stacksync has set up a
+dedicated connection for it. See `building-a-connector.md` → Credentials.
 
 ## Create vs update vs upsert
 
