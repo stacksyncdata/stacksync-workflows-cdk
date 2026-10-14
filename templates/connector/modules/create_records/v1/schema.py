@@ -13,15 +13,11 @@ See ../../../guide/schema.md for every field type.
 
 from stacksync_cdk import Request, SchemaResponse
 
-# The static base schema: the connections block and the object selector. Its
-# options come from content.py; changing it re-runs schema() (on_action.load_schema).
+# The static base schema: the object selector. Its options come from content.py;
+# changing it re-runs schema() (on_action.load_schema). The connection picker is
+# added by the CDK from connection_app_type in stacksync.yml.
 BASE_SCHEMA = {
     "metadata": {"workflows_module_schema_version": "1.0.0"},
-    "connections": {
-        "required": True,
-        "app_types": ["generic_api_credentials"],
-        "allowed_connection_management_types": ["managed"],
-    },
     "fields": [
         {
             "id": "select_object",

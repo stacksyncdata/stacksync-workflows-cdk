@@ -6,7 +6,8 @@ the parts that call your system, and deploy it.
 
 Building here, whether you are a developer or an AI assistant? Read
 [`guide/architecture.md`](guide/architecture.md) first. It defines the structure
-every connector must follow, and it is the source of truth.
+every connector must follow, and it is the source of truth. AI coding assistants
+follow [`AGENTS.md`](AGENTS.md).
 
 ## How a connector works
 
@@ -21,7 +22,9 @@ the request. The guide covers all of it.
 ## Project layout
 
 ```
-stacksync.yml          app settings (name, type, workspace)
+stacksync.yml          app settings (name, type, icon, connection, workspace)
+context.md             what the app is, its connection and objects (required)
+AGENTS.md              the rules AI coding assistants follow
 requirements.txt       the Stacksync CDK plus your dependencies
 main.py                the entry point
 guide/                 how to build — read this
@@ -57,7 +60,14 @@ Then read the guide in this order:
 4. [`guide/content.md`](guide/content.md) — dynamic dropdown options
 5. [`guide/execute.md`](guide/execute.md) — the action that runs
 
-Then fill in `modules/create_records/v1/`, run it locally, and deploy.
+Then fill in `modules/create_records/v1/` and every `context.md`, and check the
+connector against the standard:
+
+```
+python -m stacksync_cdk.connector_checks
+```
+
+Deployment is refused until it reports no problems. Then run it locally, and deploy.
 
 ## Commands
 
