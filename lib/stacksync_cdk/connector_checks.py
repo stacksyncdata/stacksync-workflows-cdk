@@ -21,6 +21,8 @@ from typing import Any
 import yaml
 
 GENERIC_CONNECTION_APP_TYPE = "generic_api_credentials"
+# Connections holding a Stacksync API key, for connectors whose modules call Stacksync's public API
+STACKSYNC_API_KEY_CONNECTION_APP_TYPES = ("stacksync_user_api_key", "stacksync_workspace_api_key")
 
 REQUIRED_APP_SETTINGS = (
     "app_type",
@@ -155,12 +157,17 @@ def _find_app_settings_problems(root: str) -> list[ConnectorProblem]:
 
     app_type = _read_text_setting(app_settings, "app_type")
     connection_app_type = _read_text_setting(app_settings, "connection_app_type")
-    if connection_app_type and connection_app_type not in (GENERIC_CONNECTION_APP_TYPE, app_type):
+    shared_connection_app_types = (
+        GENERIC_CONNECTION_APP_TYPE,
+        *STACKSYNC_API_KEY_CONNECTION_APP_TYPES,
+    )
+    if connection_app_type and connection_app_type not in (*shared_connection_app_types, app_type):
         problems.append(
             ConnectorProblem(
                 "stacksync.yml",
-                f"app_settings.connection_app_type must be {GENERIC_CONNECTION_APP_TYPE} or the app's own "
-                f"app_type ({app_type})",
+                "app_settings.connection_app_type must be one of "
+                f"{', '.join(shared_connection_app_types)} "
+                f"or the app's own app_type ({app_type})",
             )
         )
     return problems

@@ -97,6 +97,22 @@ def test_complete_connector_has_no_problems(complete_connector):
     assert _messages(complete_connector) == []
 
 
+@pytest.mark.parametrize(
+    "connection_app_type", ["stacksync_user_api_key", "stacksync_workspace_api_key"]
+)
+def test_a_connector_may_use_a_stacksync_api_key_connection(
+    complete_connector, connection_app_type
+):
+    manifest = complete_connector / "stacksync.yml"
+    manifest.write_text(
+        manifest.read_text().replace(
+            "  connection_app_type: generic_api_credentials",
+            f"  connection_app_type: {connection_app_type}",
+        )
+    )
+    assert _messages(complete_connector) == []
+
+
 def test_hidden_entries_and_build_files_are_ignored(complete_connector):
     for name in (".venv", ".stacksync_build", ".logs"):
         (complete_connector / name).mkdir()
@@ -125,8 +141,9 @@ def test_hidden_entries_and_build_files_are_ignored(complete_connector):
         (
             "  connection_app_type: generic_api_credentials",
             "  connection_app_type: salesforce",
-            "stacksync.yml: app_settings.connection_app_type must be generic_api_credentials or the app's own "
-            "app_type (acme_crm)",
+            "stacksync.yml: app_settings.connection_app_type must be one of "
+            "generic_api_credentials, stacksync_user_api_key, stacksync_workspace_api_key "
+            "or the app's own app_type (acme_crm)",
         ),
         (
             "  app_name: ACME CRM",
