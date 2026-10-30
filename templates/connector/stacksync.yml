@@ -4,7 +4,7 @@
 # modules/ folder (modules/<name>/v<N>/), so there is no module list here.
 
 deployment_settings:
-  workspace: "YOUR_WORKSPACE_ID_HERE" # set by `stacksync connector create`
+  workspace: "YOUR_WORKSPACE_ID_HERE" # set by `stacksync workflow-connector create`
   region: "usnv" # "usnv" or "besg"
 
 app_settings:
